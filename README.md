@@ -1,4 +1,4 @@
-markdown# 🌐 Website
+# 🌐 Website
 
 Jednoduchý popis tvojho webového projektu (napr. o čom web je, aké sú jeho hlavné ciele).
 
