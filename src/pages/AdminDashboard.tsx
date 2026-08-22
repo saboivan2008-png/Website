@@ -3,14 +3,19 @@ import type { FormEvent } from 'react';
 import { signOut, updatePassword } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { collection, query, getDocs, orderBy } from 'firebase/firestore';
-import { LogOut, LayoutDashboard, Crown, Car, Briefcase, Mail, Settings, Key } from 'lucide-react';
+import { LogOut, LayoutDashboard, Crown, Car, Briefcase, Mail, Settings, Key, CheckSquare, ShieldAlert, Cpu, Users, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminProducts from '../components/admin/AdminProducts';
 import AdminVehicles from '../components/admin/AdminVehicles';
 import AdminPartners from '../components/admin/AdminPartners';
+import AdminTasks from '../components/admin/AdminTasks';
+import AdminSecretDeals from '../components/admin/AdminSecretDeals';
+import AdminAuruLeads from '../components/admin/AdminAuruLeads';
+import AdminTeamManagement from '../components/admin/AdminTeamManagement';
+import AdminLegalContracts from '../components/admin/AdminLegalContracts';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'earlyAccess' | 'shop' | 'rent' | 'work' | 'settings'>('earlyAccess');
+  const [activeTab, setActiveTab] = useState<'earlyAccess' | 'shop' | 'rent' | 'work' | 'tasks' | 'trade' | 'leads' | 'team' | 'contracts' | 'settings'>('earlyAccess');
   const [leads, setLeads] = useState<any[]>([]);
   const [newPassword, setNewPassword] = useState('');
   const [passwordStatus, setPasswordStatus] = useState('');
@@ -101,6 +106,41 @@ export default function AdminDashboard() {
           </button>
 
           <button 
+            onClick={() => setActiveTab('tasks')}
+            className={`flex items-center gap-3 w-full text-left p-3 font-bold uppercase tracking-widest border-2 transition-all ${activeTab === 'tasks' ? 'bg-white border-black text-black' : 'border-transparent text-zinc-500 hover:text-white hover:border-zinc-700'}`}
+          >
+            <CheckSquare className="w-5 h-5" /> Úlohy (Tasks)
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('trade')}
+            className={`flex items-center gap-3 w-full text-left p-3 font-bold uppercase tracking-widest border-2 transition-all ${activeTab === 'trade' ? 'bg-red-600 border-black text-white' : 'border-transparent text-zinc-500 hover:text-white hover:border-zinc-700'}`}
+          >
+            <ShieldAlert className="w-5 h-5" /> Trade (Tajné Zákazky)
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('leads')}
+            className={`flex items-center gap-3 w-full text-left p-3 font-bold uppercase tracking-widest border-2 transition-all ${activeTab === 'leads' ? 'bg-amber-500 border-black text-black' : 'border-transparent text-zinc-500 hover:text-white hover:border-zinc-700'}`}
+          >
+            <Cpu className="w-5 h-5" /> Ecosystem Dopyty
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('team')}
+            className={`flex items-center gap-3 w-full text-left p-3 font-bold uppercase tracking-widest border-2 transition-all ${activeTab === 'team' ? 'bg-emerald-500 border-black text-black' : 'border-transparent text-zinc-500 hover:text-white hover:border-zinc-700'}`}
+          >
+            <Users className="w-5 h-5" /> Správa Admin Tímu
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('contracts')}
+            className={`flex items-center gap-3 w-full text-left p-3 font-bold uppercase tracking-widest border-2 transition-all ${activeTab === 'contracts' ? 'bg-amber-400 border-black text-black' : 'border-transparent text-zinc-500 hover:text-white hover:border-zinc-700'}`}
+          >
+            <FileText className="w-5 h-5" /> Zmluvy & GDPR
+          </button>
+
+          <button 
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-3 w-full text-left p-3 font-bold uppercase tracking-widest border-2 transition-all mt-8 ${activeTab === 'settings' ? 'bg-zinc-700 border-black text-white' : 'border-transparent text-zinc-500 hover:text-white hover:border-zinc-700'}`}
           >
@@ -161,6 +201,11 @@ export default function AdminDashboard() {
         {activeTab === 'shop' && <AdminProducts />}
         {activeTab === 'rent' && <AdminVehicles />}
         {activeTab === 'work' && <AdminPartners />}
+        {activeTab === 'tasks' && <AdminTasks />}
+        {activeTab === 'trade' && <AdminSecretDeals />}
+        {activeTab === 'leads' && <AdminAuruLeads />}
+        {activeTab === 'team' && <AdminTeamManagement />}
+        {activeTab === 'contracts' && <AdminLegalContracts />}
 
         {activeTab === 'settings' && (
           <div>

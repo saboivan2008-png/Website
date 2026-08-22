@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'motion/react';
 import logoImg from '../assets/images/logo_graffiti_red_recreate_1787059992037.jpg';
 
 export default function Navbar() {
@@ -14,23 +15,52 @@ export default function Navbar() {
   }, []);
 
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-zinc-950/95 backdrop-blur-sm border-b-4 border-amber-500 py-3' : 'bg-zinc-950/80 py-6'}`}>
+    <motion.nav 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-zinc-950/95 backdrop-blur-sm border-b-4 border-amber-500 py-3' : 'bg-zinc-950/80 py-6'}`}
+    >
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         <Link to="/" className="flex items-center gap-3 group">
-          <img 
+          <motion.img 
+            whileHover={{ scale: 1.1, filter: 'contrast(120%) hue-rotate(15deg)' }}
             src={logoImg} 
             alt="U.S.C Logo" 
-            className="w-12 h-12 object-cover rounded-full border-2 border-red-600 group-hover:scale-110 transition-transform shadow-[4px_4px_0px_0px_rgba(220,38,38,1)] group-hover:shadow-[6px_6px_0px_0px_rgba(220,38,38,1)]" 
+            className="w-12 h-12 object-cover rounded-full border-2 border-red-600 shadow-[4px_4px_0px_0px_rgba(220,38,38,1)] group-hover:shadow-[6px_6px_0px_0px_rgba(220,38,38,1)] transition-shadow" 
           />
-          <span className="font-black tracking-tighter text-white text-2xl uppercase group-hover:text-red-600 transition-colors">
+          <motion.span 
+            className="font-black tracking-tighter text-white text-2xl uppercase group-hover:text-red-600 transition-colors"
+          >
             U.S.C
-          </span>
+          </motion.span>
         </Link>
-        <div className="hidden md:flex gap-8 text-sm font-bold uppercase tracking-widest text-zinc-400">
-          <Link to="/" className="hover:text-amber-500 hover:-translate-y-0.5 transition-all">Centrála</Link>
-          <Link to="/usw" className="hover:text-amber-500 hover:-translate-y-0.5 transition-all">U.S.W Shop</Link>
-        </div>
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+            }
+          }}
+          className="hidden md:flex gap-8 text-sm font-bold uppercase tracking-widest text-zinc-400"
+        >
+          <motion.div variants={{ hidden: { opacity: 0, y: -10 }, visible: { opacity: 1, y: 0 } }}>
+            <Link to="/" className="relative hover:text-amber-500 transition-colors overflow-hidden group inline-block">
+              Centrála
+              <span className="absolute bottom-0 left-0 w-full h-[2px] bg-amber-500 -translate-x-[101%] group-hover:translate-x-0 transition-transform duration-300 ease-out" />
+            </Link>
+          </motion.div>
+          <motion.div variants={{ hidden: { opacity: 0, y: -10 }, visible: { opacity: 1, y: 0 } }}>
+            <Link to="/usw" className="relative hover:text-amber-500 transition-colors overflow-hidden group inline-block">
+              U.S.W Shop
+              <span className="absolute bottom-0 left-0 w-full h-[2px] bg-amber-500 -translate-x-[101%] group-hover:translate-x-0 transition-transform duration-300 ease-out" />
+            </Link>
+          </motion.div>
+        </motion.div>
       </div>
-    </nav>
+    </motion.nav>
   );
 }
