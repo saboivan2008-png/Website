@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import Markdown from 'react-markdown';
 import { 
   Hammer, 
   Cpu, 
@@ -18,7 +19,12 @@ import {
   Sparkles,
   Send,
   Terminal,
-  Activity
+  Activity,
+  Copy,
+  Check,
+  Target,
+  FileText,
+  Download
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
@@ -28,11 +34,29 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function AuruTrinity() {
-  // AI Audit Simulator State
-  const [businessType, setBusinessType] = useState('ecommerce');
+  // Active Interactive Mode
+  const [activeTab, setActiveTab] = useState<'console' | 'codegen' | 'leadhunter' | 'diagnostic'>('console');
+
+  // AI Diagnostic State
+  const [businessType, setBusinessType] = useState('craftsman');
   const [currentBottleneck, setCurrentBottleneck] = useState('accounting');
   const [teamSize, setTeamSize] = useState('1-5');
   const [calculatedPlan, setCalculatedPlan] = useState<any | null>(null);
+
+  // Standalone Code Generator Tab State
+  const [codeType, setCodeType] = useState('React / Node.js modul');
+  const [codeStack, setCodeStack] = useState('TypeScript, Tailwind CSS, Vite, Express');
+  const [codeGoal, setCodeGoal] = useState('Vytvor kalkulačku zisku a marže pre prenájom dodávok a remeselné zákazky s exportom údajov.');
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  // Standalone Lead Hunter State
+  const [leadNiche, setLeadNiche] = useState('Stavebné a priemyselné montáže (Elektro, Zváranie, Sadrokartóny)');
+  const [leadRegion, setLeadRegion] = useState('Nemecko (Bavorsko, Frankfurt, Stuttgart)');
+  const [leadOffer, setLeadOffer] = useState('Kompletné zohraté partie živnostníkov s A1 a autami');
+  const [leadResults, setLeadResults] = useState<string | null>(null);
+  const [isHuntingLeads, setIsHuntingLeads] = useState(false);
 
   // Inquiry Form State
   const [formData, setFormData] = useState({
@@ -54,7 +78,7 @@ export default function AuruTrinity() {
     let modules = ['Auru Web Engine 3.69', 'Automatizovaná Dochádzka & Fakturácia', 'AI B2B Lead Hunter'];
 
     if (businessType === 'craftsman') {
-      hoursSaved = '15 hodín týždenne (menej papierovačiek)';
+      hoursSaved = '15 hodín týždenne (eliminácia papierovačiek)';
       revenueBoost = '+40% viac zákaziek vďaka online objednávkam';
       modules = ['Mobilný Terminál Zákaziek', 'Automatické cenové ponuky & faktúry', 'Integrácia U.S.C. Work'];
     } else if (businessType === 'logistics') {
@@ -73,6 +97,54 @@ export default function AuruTrinity() {
       modules,
       timestamp: new Date().toLocaleTimeString()
     });
+  };
+
+  const handleGenerateCode = async () => {
+    if (!codeGoal.trim() || isGeneratingCode) return;
+    setIsGeneratingCode(true);
+    try {
+      const res = await fetch('/api/ai/code-gen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskType: codeType,
+          techStack: codeStack,
+          projectGoal: codeGoal
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.codeOutput) {
+        setGeneratedCode(data.codeOutput);
+      }
+    } catch (err) {
+      console.error("Code gen error:", err);
+    } finally {
+      setIsGeneratingCode(false);
+    }
+  };
+
+  const handleHuntLeads = async () => {
+    if (!leadNiche.trim() || isHuntingLeads) return;
+    setIsHuntingLeads(true);
+    try {
+      const res = await fetch('/api/ai/lead-hunter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          niche: leadNiche,
+          targetCountry: leadRegion,
+          offerType: leadOffer
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.leadStrategy) {
+        setLeadResults(data.leadStrategy);
+      }
+    } catch (err) {
+      console.error("Lead hunter error:", err);
+    } finally {
+      setIsHuntingLeads(false);
+    }
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -94,6 +166,13 @@ export default function AuruTrinity() {
     }
   };
 
+  const copyGeneratedCode = () => {
+    if (!generatedCode) return;
+    navigator.clipboard.writeText(generatedCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 font-sans selection:bg-amber-500 selection:text-black pt-24 flex flex-col">
       <Navbar />
@@ -106,20 +185,20 @@ export default function AuruTrinity() {
             Späť na Centrálu
           </Link>
 
-          <div className="flex items-center gap-2 text-amber-500 text-xs font-mono font-bold bg-amber-950/60 border border-amber-600 px-3 py-1.5">
+          <div className="flex items-center gap-2 text-amber-500 text-xs font-mono font-bold bg-amber-950/60 border border-amber-600 px-3 py-1.5 shadow-[2px_2px_0px_0px_rgba(245,158,11,0.3)]">
             <Activity className="w-4 h-4 animate-pulse" />
-            <span>AURU NEURAL CORE // ONLINE 3.69</span>
+            <span>AURU NEURAL CORE // ONLINE 3.69 (GEMINI 3.7 FLASH)</span>
           </div>
         </div>
 
         {/* Hero Section */}
-        <section className="mb-20">
+        <section className="mb-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-flex items-center gap-2 bg-amber-500 text-black px-4 py-2 font-black uppercase tracking-widest text-sm mb-6 border-2 border-black">
+            <div className="inline-flex items-center gap-2 bg-amber-500 text-black px-4 py-2 font-black uppercase tracking-widest text-sm mb-6 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <Cpu className="w-4 h-4" /> PILIER 1 // DIGITÁLNA DIELŇA & A.I. MATRIX
             </div>
             <h1 className="text-5xl md:text-8xl font-black text-white uppercase tracking-tighter mb-6 leading-none">
@@ -127,13 +206,13 @@ export default function AuruTrinity() {
             </h1>
             <p className="text-zinc-400 font-bold uppercase tracking-widest text-lg md:text-xl max-w-3xl leading-relaxed">
               Digitálna dielňa, ktorá riadi a udržiava web, pracovné platformy, dochádzku a mzdové účtovníctvo.
-              Vyvíjame moderné systémy, automatizujeme rutinu a hľadáme zákazníkov pre tvoj hustle.
+              Vyvíjame moderné systémy, automatizujeme rutinu a hľadáme zákazníkov pre tvoj hustle pomocou Gemini AI.
             </p>
           </motion.div>
         </section>
 
-        {/* 4 Pillars of Auru Matrix */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-24">
+        {/* 4 Pillars Cards */}
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -219,147 +298,366 @@ export default function AuruTrinity() {
           </motion.div>
         </section>
 
-        {/* Live Auru Matrix AI Dispatch & Multi-Pillar Brain */}
-        <section className="mb-24">
-          <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 bg-amber-500 text-black px-3 py-1 font-mono text-xs font-bold uppercase tracking-widest mb-2 border border-black">
-                <Bot className="w-3.5 h-3.5" /> CENTRÁLNY AI MOZOG // GEMINI 3.7 FLASH
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
-                U.S.C. Matrix <span className="text-amber-500">AI Operačná Konzola</span>
-              </h2>
-              <p className="text-zinc-400 text-xs md:text-sm font-bold uppercase tracking-wider mt-1 max-w-2xl">
-                Inteligentný dispečing spájajúci logistiku, nábor remeselníkov, streetwear kalkulácie a zmluvné overovania.
-              </p>
-            </div>
+        {/* Dynamic Navigation Mode Switcher */}
+        <div className="mb-6 flex flex-wrap gap-2 border-b-2 border-zinc-800 pb-4">
+          <button
+            type="button"
+            onClick={() => setActiveTab('console')}
+            className={`px-5 py-3 font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 border-2 transition-all ${
+              activeTab === 'console'
+                ? 'bg-amber-500 text-black border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700'
+            }`}
+          >
+            <Bot className="w-4 h-4" /> 1. Matrix AI Chat & Dispečing
+          </button>
 
-            <div className="flex items-center gap-2 text-zinc-500 text-xs font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-              <span className="text-emerald-400 font-bold uppercase">6/6 Pilierov Synchronizovaných</span>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('codegen')}
+            className={`px-5 py-3 font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 border-2 transition-all ${
+              activeTab === 'codegen'
+                ? 'bg-amber-500 text-black border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700'
+            }`}
+          >
+            <Code2 className="w-4 h-4" /> 2. Kód & Skripty Dielne
+          </button>
 
-          <MatrixDispatchConsole initialPillar="AURU_TRINITY" />
-        </section>
+          <button
+            type="button"
+            onClick={() => setActiveTab('leadhunter')}
+            className={`px-5 py-3 font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 border-2 transition-all ${
+              activeTab === 'leadhunter'
+                ? 'bg-amber-500 text-black border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700'
+            }`}
+          >
+            <Target className="w-4 h-4" /> 3. B2B Lead Hunter
+          </button>
 
-        {/* Interactive AI Automation Diagnostic Generator */}
-        <section className="mb-24 bg-zinc-900 border-4 border-amber-500 p-8 md:p-12 relative overflow-hidden shadow-[10px_10px_0px_0px_rgba(245,158,11,0.4)]">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 pb-6 border-b-2 border-zinc-800">
-            <div>
-              <div className="inline-flex items-center gap-2 bg-black text-amber-500 px-3 py-1 font-mono text-xs font-bold uppercase tracking-widest mb-2 border border-amber-500">
-                <Sparkles className="w-3.5 h-3.5" /> INTERAKTÍVNY SIMULÁTOR
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
-                Auru AI Hustle Diagnostika
-              </h2>
-              <p className="text-zinc-400 text-xs font-bold uppercase tracking-wider mt-1">
-                Zisti, koľko hodín manuálnej driny a nákladov dokáže Auru Trinity ušetriť tvojej firme.
-              </p>
-            </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('diagnostic')}
+            className={`px-5 py-3 font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 border-2 transition-all ${
+              activeTab === 'diagnostic'
+                ? 'bg-amber-500 text-black border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" /> 4. Simulátor Úspor
+          </button>
+        </div>
 
-            <div className="text-zinc-500 text-xs font-mono">
-              DIAGNOSTIC ALGORITHM: 3.69 MATRIX
-            </div>
-          </div>
-
-          <form onSubmit={runDiagnostic} className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-            <div>
-              <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">
-                Oblasť Podnikania / Hustlu
-              </label>
-              <select
-                value={businessType}
-                onChange={(e) => setBusinessType(e.target.value)}
-                className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-amber-500 outline-none uppercase"
-              >
-                <option value="ecommerce">E-Shop & Predaj tovaru</option>
-                <option value="craftsman">Remeslá, Stavby & Dielne</option>
-                <option value="logistics">Doprava, Kuriéri & Taxi</option>
-                <option value="services">Služby, Agentúry & Gastronómia</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">
-                Najväčšia Brzda (Bottleneck)
-              </label>
-              <select
-                value={currentBottleneck}
-                onChange={(e) => setCurrentBottleneck(e.target.value)}
-                className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-amber-500 outline-none uppercase"
-              >
-                <option value="accounting">Papierovačky, Fakturácie, Dane</option>
-                <option value="leads">Nedostatok nových zákazníkov</option>
-                <option value="website">Zastaraný alebo nefunkčný web</option>
-                <option value="dispatch">Chaos v objednávkach a dispečingu</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">
-                Veľkosť Tímu / Zákaziek
-              </label>
-              <select
-                value={teamSize}
-                onChange={(e) => setTeamSize(e.target.value)}
-                className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-amber-500 outline-none uppercase"
-              >
-                <option value="1">Sólo jednotlivec (SZČO)</option>
-                <option value="1-5">2 až 5 ľudí</option>
-                <option value="6-20">6 až 20 ľudí</option>
-                <option value="20+">20+ ľudí (Flotila / Firma)</option>
-              </select>
-            </div>
-
-            <div className="sm:col-span-3 mt-2">
-              <button
-                type="submit"
-                className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-colors border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-              >
-                <Zap className="w-5 h-5" /> Vypočítať Automatizačný Plán
-              </button>
-            </div>
-          </form>
-
-          {calculatedPlan && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-black border-2 border-amber-500 p-6 flex flex-col md:flex-row items-center justify-between gap-6"
-            >
+        {/* Tab 1: Live Auru Matrix AI Dispatch & Multi-Pillar Brain */}
+        {activeTab === 'console' && (
+          <section className="mb-24">
+            <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div>
-                <div className="text-amber-500 font-mono text-xs font-bold uppercase mb-1">
-                  /// VÝSLEDOK ANALÝZY PRE TVOJ BIZNIS
+                <div className="inline-flex items-center gap-2 bg-amber-500 text-black px-3 py-1 font-mono text-xs font-bold uppercase tracking-widest mb-2 border border-black">
+                  <Bot className="w-3.5 h-3.5" /> CENTRÁLNY AI MOZOG // GEMINI 3.7 FLASH
                 </div>
-                <div className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">
-                  Odhadovaná úspora: <span className="text-amber-400">{calculatedPlan.hoursSaved}</span>
-                </div>
-                <div className="text-zinc-400 text-xs font-bold uppercase mt-1">
-                  Rast konverzie a efektivity: <strong className="text-white">{calculatedPlan.revenueBoost}</strong>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {calculatedPlan.modules.map((m: string, i: number) => (
-                    <span key={i} className="bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] font-mono px-2 py-1 uppercase">
-                      ✓ {m}
-                    </span>
-                  ))}
-                </div>
+                <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
+                  Auru Matrix <span className="text-amber-500">AI Chat & Dispečing</span>
+                </h2>
+                <p className="text-zinc-400 text-xs md:text-sm font-bold uppercase tracking-wider mt-1 max-w-2xl">
+                  Kompletná obojsmerná interakcia s Gemini 3.7 Flash pre všetkých 6 pilierov U.S.C.
+                </p>
               </div>
 
-              <a
-                href="#inquiry-form"
-                className="px-6 py-3 bg-white hover:bg-zinc-200 text-black font-black uppercase text-xs tracking-widest whitespace-nowrap transition-colors border-2 border-black"
+              <div className="flex items-center gap-2 text-zinc-500 text-xs font-mono">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span className="text-emerald-400 font-bold uppercase">6/6 Pilierov Synchronizovaných</span>
+              </div>
+            </div>
+
+            <MatrixDispatchConsole initialPillar="AURU_TRINITY" />
+          </section>
+        )}
+
+        {/* Tab 2: Live Code & Script Generator */}
+        {activeTab === 'codegen' && (
+          <section className="mb-24 bg-zinc-900 border-4 border-black p-8 md:p-12 relative shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 pb-6 border-b-2 border-zinc-800">
+              <div>
+                <div className="inline-flex items-center gap-2 bg-black text-amber-500 px-3 py-1 font-mono text-xs font-bold uppercase tracking-widest mb-2 border border-amber-500">
+                  <Code2 className="w-3.5 h-3.5" /> LIVE CODE & BOT WERKSTATT
+                </div>
+                <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
+                  Auru Trinity <span className="text-amber-500">Generátor Kódu</span>
+                </h2>
+                <p className="text-zinc-400 text-xs font-bold uppercase tracking-wider mt-1">
+                  Generovanie funkčných TypeScript/React/Node skriptov, REST endpointov a automatizácií.
+                </p>
+              </div>
+
+              <div className="text-zinc-500 text-xs font-mono">
+                ENGINE: GEMINI 3.7 FLASH // DEV LEVEL
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div>
+                <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">Typ Úlohy / Modul</label>
+                <input
+                  type="text"
+                  value={codeType}
+                  onChange={(e) => setCodeType(e.target.value)}
+                  className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">Technologický Stack</label>
+                <input
+                  type="text"
+                  value={codeStack}
+                  onChange={(e) => setCodeStack(e.target.value)}
+                  className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-amber-500 outline-none"
+                />
+              </div>
+
+              <div className="md:col-span-3">
+                <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">Zadanie a Požiadavky</label>
+                <textarea
+                  rows={3}
+                  value={codeGoal}
+                  onChange={(e) => setCodeGoal(e.target.value)}
+                  className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-amber-500 outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGenerateCode}
+              disabled={isGeneratingCode}
+              className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-colors border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:opacity-50"
+            >
+              <Zap className="w-5 h-5" /> {isGeneratingCode ? 'Generujem Kód cez Gemini...' : 'Vygenerovať Kód & Nasadzovací Skript'}
+            </button>
+
+            {generatedCode && (
+              <div className="mt-8 bg-black border-2 border-amber-500 p-6 relative">
+                <div className="flex items-center justify-between mb-4 pb-2 border-b border-zinc-800">
+                  <span className="text-amber-400 font-mono text-xs font-bold uppercase">
+                    /// VÝSTUP Z AURU TRINITY DIEĽNE
+                  </span>
+                  <button
+                    type="button"
+                    onClick={copyGeneratedCode}
+                    className="px-3 py-1 bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white text-xs font-mono uppercase flex items-center gap-1.5 transition-colors"
+                  >
+                    {copiedCode ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedCode ? 'Skopírované' : 'Kopírovať Kód'}</span>
+                  </button>
+                </div>
+
+                <div className="prose prose-invert max-w-none font-mono text-xs leading-relaxed text-zinc-200">
+                  <Markdown>{generatedCode}</Markdown>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Tab 3: B2B Lead Hunter */}
+        {activeTab === 'leadhunter' && (
+          <section className="mb-24 bg-zinc-900 border-4 border-black p-8 md:p-12 relative shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 pb-6 border-b-2 border-zinc-800">
+              <div>
+                <div className="inline-flex items-center gap-2 bg-emerald-500 text-black px-3 py-1 font-mono text-xs font-bold uppercase tracking-widest mb-2 border border-black">
+                  <Target className="w-3.5 h-3.5" /> B2B ACQUISITION MATRIX
+                </div>
+                <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
+                  Auru <span className="text-emerald-400">Lead Hunter</span>
+                </h2>
+                <p className="text-zinc-400 text-xs font-bold uppercase tracking-wider mt-1">
+                  Vyhľadávanie nových zákazníkov, tvorba predajných správ a akvizičných kampaní pre stavebníctvo a logistiku.
+                </p>
+              </div>
+
+              <div className="text-zinc-500 text-xs font-mono">
+                OUTREACH PIPELINE // B2B ENGINE
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div>
+                <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">Cieľová Nika / Odvetvie</label>
+                <input
+                  type="text"
+                  value={leadNiche}
+                  onChange={(e) => setLeadNiche(e.target.value)}
+                  className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-emerald-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">Krajina / Lokalita</label>
+                <input
+                  type="text"
+                  value={leadRegion}
+                  onChange={(e) => setLeadRegion(e.target.value)}
+                  className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-emerald-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">Typ Ponuky</label>
+                <input
+                  type="text"
+                  value={leadOffer}
+                  onChange={(e) => setLeadOffer(e.target.value)}
+                  className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-emerald-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleHuntLeads}
+              disabled={isHuntingLeads}
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-colors border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:opacity-50"
+            >
+              <Zap className="w-5 h-5" /> {isHuntingLeads ? 'Generujem Akvizičnú Stratégiu...' : 'Spustiť AI B2B Lead Analýzu & Šablóny'}
+            </button>
+
+            {leadResults && (
+              <div className="mt-8 bg-black border-2 border-emerald-500 p-6 relative">
+                <div className="flex items-center justify-between mb-4 pb-2 border-b border-zinc-800">
+                  <span className="text-emerald-400 font-mono text-xs font-bold uppercase">
+                    /// VÝSTUP LEAD HUNTERA (ICP + OUTREACH MESSAGES)
+                  </span>
+                </div>
+
+                <div className="prose prose-invert max-w-none font-sans text-sm leading-relaxed text-zinc-200">
+                  <Markdown>{leadResults}</Markdown>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Tab 4: Interactive AI Automation Diagnostic Generator */}
+        {activeTab === 'diagnostic' && (
+          <section className="mb-24 bg-zinc-900 border-4 border-amber-500 p-8 md:p-12 relative overflow-hidden shadow-[10px_10px_0px_0px_rgba(245,158,11,0.4)]">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 pb-6 border-b-2 border-zinc-800">
+              <div>
+                <div className="inline-flex items-center gap-2 bg-black text-amber-500 px-3 py-1 font-mono text-xs font-bold uppercase tracking-widest mb-2 border border-amber-500">
+                  <Sparkles className="w-3.5 h-3.5" /> INTERAKTÍVNY SIMULÁTOR
+                </div>
+                <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
+                  Auru AI Hustle Diagnostika
+                </h2>
+                <p className="text-zinc-400 text-xs font-bold uppercase tracking-wider mt-1">
+                  Zisti, koľko hodín manuálnej driny a nákladov dokáže Auru Trinity ušetriť tvojej firme.
+                </p>
+              </div>
+
+              <div className="text-zinc-500 text-xs font-mono">
+                DIAGNOSTIC ALGORITHM: 3.69 MATRIX
+              </div>
+            </div>
+
+            <form onSubmit={runDiagnostic} className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              <div>
+                <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">
+                  Oblasť Podnikania / Hustlu
+                </label>
+                <select
+                  value={businessType}
+                  onChange={(e) => setBusinessType(e.target.value)}
+                  className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-amber-500 outline-none uppercase"
+                >
+                  <option value="ecommerce">E-Shop & Predaj tovaru</option>
+                  <option value="craftsman">Remeslá, Stavby & Dielne</option>
+                  <option value="logistics">Doprava, Kuriéri & Taxi</option>
+                  <option value="services">Služby, Agentúry & Gastronómia</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">
+                  Najväčšia Brzda (Bottleneck)
+                </label>
+                <select
+                  value={currentBottleneck}
+                  onChange={(e) => setCurrentBottleneck(e.target.value)}
+                  className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-amber-500 outline-none uppercase"
+                >
+                  <option value="accounting">Papierovačky, Fakturácie, Dane</option>
+                  <option value="leads">Nedostatok nových zákazníkov</option>
+                  <option value="website">Zastaraný alebo nefunkčný web</option>
+                  <option value="dispatch">Chaos v objednávkach a dispečingu</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">
+                  Veľkosť Tímu / Zákaziek
+                </label>
+                <select
+                  value={teamSize}
+                  onChange={(e) => setTeamSize(e.target.value)}
+                  className="w-full bg-black border-2 border-zinc-700 p-3 text-white font-mono text-xs focus:border-amber-500 outline-none uppercase"
+                >
+                  <option value="1">Sólo jednotlivec (SZČO)</option>
+                  <option value="1-5">2 až 5 ľudí</option>
+                  <option value="6-20">6 až 20 ľudí</option>
+                  <option value="20+">20+ ľudí (Flotila / Firma)</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-3 mt-2">
+                <button
+                  type="submit"
+                  className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-colors border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                >
+                  <Zap className="w-5 h-5" /> Vypočítať Automatizačný Plán
+                </button>
+              </div>
+            </form>
+
+            {calculatedPlan && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-black border-2 border-amber-500 p-6 flex flex-col md:flex-row items-center justify-between gap-6"
               >
-                Aplikovať Riešenie &raquo;
-              </a>
-            </motion.div>
-          )}
-        </section>
+                <div>
+                  <div className="text-amber-500 font-mono text-xs font-bold uppercase mb-1">
+                    /// VÝSLEDOK ANALÝZY PRE TVOJ BIZNIS
+                  </div>
+                  <div className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">
+                    Odhadovaná úspora: <span className="text-amber-400">{calculatedPlan.hoursSaved}</span>
+                  </div>
+                  <div className="text-zinc-400 text-xs font-bold uppercase mt-1">
+                    Rast konverzie a efektivity: <strong className="text-white">{calculatedPlan.revenueBoost}</strong>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {calculatedPlan.modules.map((m: string, i: number) => (
+                      <span key={i} className="bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] font-mono px-2 py-1 uppercase">
+                        ✓ {m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <a
+                  href="#inquiry-form"
+                  className="px-6 py-3 bg-white hover:bg-zinc-200 text-black font-black uppercase text-xs tracking-widest whitespace-nowrap transition-colors border-2 border-black"
+                >
+                  Aplikovať Riešenie &raquo;
+                </a>
+              </motion.div>
+            )}
+          </section>
+        )}
 
         {/* Inquiry / Consultation Form */}
-        <section id="inquiry-form" className="max-w-3xl mx-auto bg-zinc-900 border-4 border-black p-8 md:p-12 relative overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+        <section id="inquiry-form" className="max-w-3xl mx-auto bg-zinc-900 border-4 border-black p-8 md:p-12 relative overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-12">
           <Hammer className="absolute -bottom-10 -right-10 w-64 h-64 text-zinc-950 pointer-events-none" />
 
           <div className="relative z-10">
@@ -454,7 +752,7 @@ export default function AuruTrinity() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-5 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-colors mt-2 border-2 border-black disabled:opacity-50"
+                  className="w-full py-5 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-colors mt-2 border-2 border-black disabled:opacity-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
                 >
                   <Send className="w-5 h-5" />
                   {isSubmitting ? 'Odosielam do Dielne...' : 'Odoslať Dopyt do Auru Trinity'}

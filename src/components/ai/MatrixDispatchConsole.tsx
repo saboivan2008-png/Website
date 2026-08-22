@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import Markdown from 'react-markdown';
 import { 
   Bot, 
   Send, 
@@ -23,8 +24,13 @@ import {
   ChevronRight,
   Maximize2,
   Copy,
-  Check
+  Check,
+  Download,
+  Code2,
+  Target,
+  FileText
 } from 'lucide-react';
+import jsPDF from 'jspdf';
 import type { MatrixPillar, DispatchMessage } from '../../types';
 
 interface MatrixDispatchConsoleProps {
@@ -40,7 +46,8 @@ const PRESET_PROMPTS: Record<MatrixPillar, Array<{ label: string; prompt: string
   ],
   AURU_TRINITY: [
     { label: '💻 Architektúra Nového Modulu', prompt: 'Navrhni optimálnu architektúru pre automatické generovanie faktúr a prepojenie s bankovými API.', icon: '🤖' },
-    { label: '📈 Automatizácia Lead Huntera', prompt: 'Ako nastaviť AI zber B2B dopytov pre montážne práce v Nemecku a stavebné firmy?', icon: '🎯' }
+    { label: '📈 Automatizácia Lead Huntera', prompt: 'Ako nastaviť AI zber B2B dopytov pre montážne práce v Nemecku a stavebné firmy?', icon: '🎯' },
+    { label: '⚡ Skript na Dochádzku & Mzdy', prompt: 'Vygeneruj TypeScript funkciu pre výpočet nemeckých diét a turnusových odpracovaných hodín pre živnostníka.', icon: '📜' }
   ],
   USW_STREETWEAR: [
     { label: '👑 Kalkulácia Nákladov na Drop', prompt: 'Vypočítaj maržu a odporúčanú predajnú cenu pre limitovanú edíciu 100 ks Heavyweight mikín s 3D potlačou.', icon: '👕' },
@@ -70,7 +77,7 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
     {
       id: 'init-1',
       role: 'matrix',
-      text: 'Vítam ťa v **U.S.C. Matrix AI Dispečingu** (Auru Neural Engine 3.69).\n\nSom centrálny operačný mozog prepájajúci všetkých 6 pilierov: **Auru Trinity, U.S.W., Rent a Wheel, U.S.C. Work, Trade Zakasajee a Solidarity**.\n\nZvoľ si pilier alebo zadaj ľubovoľnú požiadavku na kalkuláciu trasy, profilovanie remeselníka, kontrolu zmlúv či optimalizáciu biznisu.',
+      text: 'Vítam ťa v **U.S.C. Matrix AI Dispečingu & Auru Trinity Core** (Gemini 3.7 Flash).\n\nSom centrálny operačný mozog prepájajúci všetkých 6 pilierov: **Auru Trinity (Kód & Lead Hunter), U.S.W., Rent a Wheel, U.S.C. Work, Trade Zakasajee a Solidarity**.\n\nMôžeš zadať priamu otázku, spustiť generovanie kódu, vypočítať trasu alebo analyzovať remeselný profil.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       pillar: 'ALL_PILLARS'
     }
@@ -79,7 +86,7 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Specialized Route Calculator Sub-modal / Drawer
+  // Specialized Route Calculator Tool
   const [showRouteCalc, setShowRouteCalc] = useState(false);
   const [routeOrigin, setRouteOrigin] = useState('Bratislava');
   const [routeDestination, setRouteDestination] = useState('Mníchov');
@@ -87,12 +94,24 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
   const [routeWeight, setRouteWeight] = useState(750);
   const [routeFuelPrice, setRouteFuelPrice] = useState(1.62);
 
-  // Specialized Worker Matcher Sub-modal / Drawer
+  // Specialized Worker Matcher Tool
   const [showWorkerMatch, setShowWorkerMatch] = useState(false);
   const [workerProfession, setWorkerProfession] = useState('Elektromontér / Priemyselný elektrikár');
   const [workerExp, setWorkerExp] = useState(5);
   const [workerLang, setWorkerLang] = useState('B1 - Dohovorí sa na stavbe');
   const [workerCerts, setWorkerCerts] = useState('§22, SCC certifikát, Vodičský preukaz B');
+
+  // Specialized Code Generator Tool (Auru Trinity)
+  const [showCodeGen, setShowCodeGen] = useState(false);
+  const [codeTaskType, setCodeTaskType] = useState('Automatizačný Invoicing Skript');
+  const [codeTechStack, setCodeTechStack] = useState('TypeScript / Node.js / Express');
+  const [codeGoal, setCodeGoal] = useState('Generovanie PDF faktúr s QR kódom PayBySquare pre živnostníkov');
+
+  // Specialized Lead Hunter Tool
+  const [showLeadHunter, setShowLeadHunter] = useState(false);
+  const [leadNiche, setLeadNiche] = useState('Stavebné firmy a priemyselné montáže');
+  const [leadCountry, setLeadCountry] = useState('Nemecko (Bavorsko a Bádensko-Württembersko)');
+  const [leadOffer, setLeadOffer] = useState('Partie certifikovaných elektrikárov a zváračov s vlastnými dodávkami');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -121,8 +140,7 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
     setIsLoading(true);
 
     try {
-      // Build conversation history for context
-      const historyPayload = messages.slice(-5).map(m => ({
+      const historyPayload = messages.slice(-6).map(m => ({
         role: m.role,
         text: m.text
       }));
@@ -161,7 +179,7 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
       const errorMessage: DispatchMessage = {
         id: `err-${Date.now()}`,
         role: 'matrix',
-        text: `⚠️ **Chyba spojenia s Auru Neural Core:** ${err.message || 'Server je momentálne nedostupný. Skontrolujte konfiguráciu kľúčov v nastaveniach.'}`,
+        text: `⚠️ **Chyba spojenia s Auru Neural Core:** ${err.message || 'Server je momentálne nedostupný.'}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         pillar: selectedPillar
       };
@@ -298,10 +316,176 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
     }
   };
 
+  const handleRunCodeGen = async () => {
+    setIsLoading(true);
+    setShowCodeGen(false);
+
+    const userPrompt = `💻 **Generovanie Kódu v Dielni (Auru Trinity)**:
+- Úloha: **${codeTaskType}**
+- Stack: **${codeTechStack}**
+- Cieľ: **${codeGoal}**`;
+
+    const userMessage: DispatchMessage = {
+      id: `usr-${Date.now()}`,
+      role: 'user',
+      text: userPrompt,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      pillar: 'AURU_TRINITY'
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+
+    try {
+      const res = await fetch('/api/ai/code-gen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskType: codeTaskType,
+          techStack: codeTechStack,
+          projectGoal: codeGoal
+        })
+      });
+
+      const data = await res.json();
+      if (data.success && data.codeOutput) {
+        const matrixMessage: DispatchMessage = {
+          id: `mat-${Date.now()}`,
+          role: 'matrix',
+          text: data.codeOutput,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          pillar: 'AURU_TRINITY'
+        };
+        setMessages(prev => [...prev, matrixMessage]);
+      } else {
+        throw new Error(data.error || 'Chyba pri generovaní kódu');
+      }
+    } catch (err: any) {
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `err-${Date.now()}`,
+          role: 'matrix',
+          text: `⚠️ **Chyba generovania kódu:** ${err.message}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          pillar: 'AURU_TRINITY'
+        }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRunLeadHunter = async () => {
+    setIsLoading(true);
+    setShowLeadHunter(false);
+
+    const userPrompt = `🎯 **B2B Lead Hunter Analýza (Auru Trinity)**:
+- Nika: **${leadNiche}**
+- Trh: **${leadCountry}**
+- Ponuka: **${leadOffer}**`;
+
+    const userMessage: DispatchMessage = {
+      id: `usr-${Date.now()}`,
+      role: 'user',
+      text: userPrompt,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      pillar: 'AURU_TRINITY'
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+
+    try {
+      const res = await fetch('/api/ai/lead-hunter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          niche: leadNiche,
+          targetCountry: leadCountry,
+          offerType: leadOffer
+        })
+      });
+
+      const data = await res.json();
+      if (data.success && data.leadStrategy) {
+        const matrixMessage: DispatchMessage = {
+          id: `mat-${Date.now()}`,
+          role: 'matrix',
+          text: data.leadStrategy,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          pillar: 'AURU_TRINITY'
+        };
+        setMessages(prev => [...prev, matrixMessage]);
+      } else {
+        throw new Error(data.error || 'Chyba pri generovaní lead stratégie');
+      }
+    } catch (err: any) {
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `err-${Date.now()}`,
+          role: 'matrix',
+          text: `⚠️ **Chyba Lead Huntera:** ${err.message}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          pillar: 'AURU_TRINITY'
+        }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const exportChatToPdf = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Header styling
+    doc.setFillColor(15, 15, 18);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+
+    doc.setTextColor(245, 158, 11);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('UNDERGROUND STREET COLLECTIVE // AURU MATRIX AI', 14, 18);
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`OFICIÁLNY AI VÝSTUP & AUDIT | DÁTUM: ${new Date().toLocaleDateString('sk-SK')}`, 14, 28);
+    doc.text(`PILIER: ${selectedPillar} | MODEL: GEMINI 3.7 FLASH`, 14, 34);
+
+    let currentY = 50;
+
+    messages.forEach((msg, idx) => {
+      if (currentY > 260) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      const isUser = msg.role === 'user';
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(isUser ? 200 : 245, isUser ? 100 : 158, isUser ? 0 : 11);
+      doc.text(`[${msg.timestamp}] ${isUser ? 'OPERÁTOR' : 'AURU MATRIX CORE'}:`, 14, currentY);
+      currentY += 5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(40, 40, 40);
+
+      // Clean markdown tags for pdf readability
+      const cleanText = msg.text.replace(/[*#`_]/g, '');
+      const lines = doc.splitTextToSize(cleanText, pageWidth - 28);
+      doc.text(lines, 14, currentY);
+      currentY += (lines.length * 4.5) + 6;
+    });
+
+    doc.save(`Auru_Matrix_AI_Report_${Date.now()}.pdf`);
   };
 
   return (
@@ -329,10 +513,51 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
         </div>
 
         {/* Action quick triggers */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
-            onClick={() => setShowRouteCalc(!showRouteCalc)}
+            onClick={() => {
+              setShowCodeGen(!showCodeGen);
+              setShowRouteCalc(false);
+              setShowWorkerMatch(false);
+              setShowLeadHunter(false);
+            }}
+            className={`px-3 py-1.5 border-2 text-xs font-bold uppercase flex items-center gap-1.5 transition-all ${
+              showCodeGen 
+                ? 'bg-amber-500 border-black text-black' 
+                : 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-amber-500 hover:text-white'
+            }`}
+          >
+            <Code2 className="w-3.5 h-3.5" />
+            <span>Kód & Skripty</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowLeadHunter(!showLeadHunter);
+              setShowCodeGen(false);
+              setShowRouteCalc(false);
+              setShowWorkerMatch(false);
+            }}
+            className={`px-3 py-1.5 border-2 text-xs font-bold uppercase flex items-center gap-1.5 transition-all ${
+              showLeadHunter 
+                ? 'bg-emerald-500 border-black text-black' 
+                : 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-emerald-500 hover:text-white'
+            }`}
+          >
+            <Target className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Lead Hunter</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowRouteCalc(!showRouteCalc);
+              setShowCodeGen(false);
+              setShowWorkerMatch(false);
+              setShowLeadHunter(false);
+            }}
             className={`px-3 py-1.5 border-2 text-xs font-bold uppercase flex items-center gap-1.5 transition-all ${
               showRouteCalc 
                 ? 'bg-zinc-100 border-white text-black' 
@@ -345,7 +570,12 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
 
           <button
             type="button"
-            onClick={() => setShowWorkerMatch(!showWorkerMatch)}
+            onClick={() => {
+              setShowWorkerMatch(!showWorkerMatch);
+              setShowCodeGen(false);
+              setShowRouteCalc(false);
+              setShowLeadHunter(false);
+            }}
             className={`px-3 py-1.5 border-2 text-xs font-bold uppercase flex items-center gap-1.5 transition-all ${
               showWorkerMatch 
                 ? 'bg-blue-600 border-white text-white' 
@@ -354,6 +584,15 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
           >
             <UserCheck className="w-3.5 h-3.5 text-blue-400" />
             <span className="hidden sm:inline">Match Remeselníka</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={exportChatToPdf}
+            title="Stiahnuť PDF report"
+            className="p-1.5 bg-zinc-900 border-2 border-zinc-700 text-zinc-300 hover:text-amber-400 hover:border-amber-500 transition-colors"
+          >
+            <Download className="w-4 h-4" />
           </button>
 
           <button
@@ -395,6 +634,148 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
           </button>
         ))}
       </div>
+
+      {/* Drawer: Code Generator Tool (Auru Trinity) */}
+      <AnimatePresence>
+        {showCodeGen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-zinc-900 border-b-4 border-amber-500 p-4 font-mono overflow-hidden shadow-xl"
+          >
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <Code2 className="w-4 h-4 text-amber-500" />
+                  <span className="font-black text-xs uppercase text-amber-400">
+                    Auru Trinity // Kód & Automatizačné Skripty Generator
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCodeGen(false)}
+                  className="text-zinc-500 hover:text-white uppercase font-bold text-[10px]"
+                >
+                  ✕ Zatvoriť
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3 text-xs">
+                <div>
+                  <label className="block text-zinc-400 text-[10px] uppercase font-bold mb-1">Typ Úlohy / Modul</label>
+                  <select
+                    value={codeTaskType}
+                    onChange={(e) => setCodeTaskType(e.target.value)}
+                    className="w-full bg-black border border-zinc-700 p-2 text-white font-mono uppercase text-xs"
+                  >
+                    <option value="Automatizačný Invoicing Skript">Automatizácia Fakturácie & QR Pay</option>
+                    <option value="React & Tailwind Dashboard Komponent">React & Tailwind Dashboard Komponent</option>
+                    <option value="Node.js API Endpoint & Auth">Express / Node.js API Endpoint</option>
+                    <option value="Dochádzkový Kalkulátor Turnusov">Dochádzkový & Mzdový Engine</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-zinc-400 text-[10px] uppercase font-bold mb-1">Technologický Stack</label>
+                  <input
+                    type="text"
+                    value={codeTechStack}
+                    onChange={(e) => setCodeTechStack(e.target.value)}
+                    className="w-full bg-black border border-zinc-700 p-2 text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-zinc-400 text-[10px] uppercase font-bold mb-1">Cieľ / Popis Funkcie</label>
+                  <input
+                    type="text"
+                    value={codeGoal}
+                    onChange={(e) => setCodeGoal(e.target.value)}
+                    className="w-full bg-black border border-zinc-700 p-2 text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRunCodeGen}
+                disabled={isLoading}
+                className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 border-2 border-black transition-colors"
+              >
+                <Zap className="w-4 h-4" /> Vygenerovať Produkčný Kód cez Gemini 3.7
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Drawer: Lead Hunter Tool */}
+      <AnimatePresence>
+        {showLeadHunter && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-zinc-900 border-b-4 border-emerald-500 p-4 font-mono overflow-hidden shadow-xl"
+          >
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4 text-emerald-400" />
+                  <span className="font-black text-xs uppercase text-emerald-300">
+                    Auru Trinity // B2B Lead Hunter & Akvizičná Stratégia
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLeadHunter(false)}
+                  className="text-zinc-500 hover:text-white uppercase font-bold text-[10px]"
+                >
+                  ✕ Zatvoriť
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3 text-xs">
+                <div>
+                  <label className="block text-zinc-400 text-[10px] uppercase font-bold mb-1">Cieľový Sektor / Nika</label>
+                  <input
+                    type="text"
+                    value={leadNiche}
+                    onChange={(e) => setLeadNiche(e.target.value)}
+                    className="w-full bg-black border border-zinc-700 p-2 text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-zinc-400 text-[10px] uppercase font-bold mb-1">Cieľová Krajina / Región</label>
+                  <input
+                    type="text"
+                    value={leadCountry}
+                    onChange={(e) => setLeadCountry(e.target.value)}
+                    className="w-full bg-black border border-zinc-700 p-2 text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-zinc-400 text-[10px] uppercase font-bold mb-1">Ponuka & Služba</label>
+                  <input
+                    type="text"
+                    value={leadOffer}
+                    onChange={(e) => setLeadOffer(e.target.value)}
+                    className="w-full bg-black border border-zinc-700 p-2 text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRunLeadHunter}
+                disabled={isLoading}
+                className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 border-2 border-black transition-colors"
+              >
+                <Zap className="w-4 h-4" /> Vygenerovať Akvizičný Plán & Pitch Správy
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Drawer: Route Calculator Tool */}
       <AnimatePresence>
@@ -580,7 +961,7 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
       </AnimatePresence>
 
       {/* Main Message Stream Container */}
-      <div className="flex-1 p-4 md:p-6 overflow-y-auto bg-zinc-950/80 space-y-4">
+      <div className="flex-1 p-4 md:p-6 overflow-y-auto bg-zinc-950/80 space-y-4 max-h-[580px]">
         {messages.map((m) => (
           <div
             key={m.id}
@@ -620,14 +1001,14 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
               <button
                 type="button"
                 onClick={() => copyToClipboard(m.text, m.id)}
-                className="absolute top-2 right-2 p-1.5 bg-black/40 text-zinc-400 hover:text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 right-2 p-1.5 bg-black/60 text-zinc-300 hover:text-white rounded opacity-0 group-hover:opacity-100 transition-opacity z-10"
                 title="Kopírovať text"
               >
                 {copiedId === m.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
 
-              <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base font-sans">
-                {m.text}
+              <div className="leading-relaxed text-sm md:text-base font-sans prose prose-invert max-w-none prose-p:my-1 prose-headings:text-amber-400 prose-code:text-amber-300 prose-code:bg-black/50 prose-code:px-1 prose-code:py-0.5 prose-pre:bg-black prose-pre:border prose-pre:border-zinc-800">
+                <Markdown>{m.text}</Markdown>
               </div>
             </div>
           </div>
@@ -640,7 +1021,7 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
             </div>
             <div className="p-4 bg-zinc-900 border-2 border-amber-500 text-amber-400 font-mono text-xs flex items-center gap-3">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
-              Kalkulujem logistiku, mzdovú matricu a optimalizácie v reálnom čase...
+              Auru Matrix Core (Gemini 3.7 Flash) spracováva požiadavku v reálnom čase...
             </div>
           </div>
         )}
@@ -681,7 +1062,7 @@ export default function MatrixDispatchConsole({ initialPillar = 'ALL_PILLARS', e
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder={`Zadaj príkaz alebo otázku pre Auru Matrix [${selectedPillar}]...`}
+              placeholder={`Zadaj požiadavku alebo otázku pre Auru Matrix [${selectedPillar}]...`}
               disabled={isLoading}
               className="w-full bg-zinc-950 border-2 border-zinc-700 p-4 text-white font-mono text-sm placeholder:text-zinc-600 focus:outline-none focus:border-amber-500 transition-colors"
             />

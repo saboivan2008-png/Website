@@ -1011,7 +1011,7 @@ export default function SecureTradeRoom() {
                               escrowAmountEur: parseFloat(msg.cargoManifest!.escrowAmount?.replace(/[^0-9.]/g, '') || '5000') || 5000,
                               escortRequired: !!msg.cargoManifest!.escortRequired,
                               clearanceLevel: msg.cargoManifest!.riskLevel || 'TIER-2',
-                              epochHour: epochInfo.epochHour,
+                              epochHour: String(epochInfo.epochHour),
                               hashFingerprint: msg.keyFingerprint,
                               authorizedOperator: msg.senderCallsign
                             });
