@@ -23,6 +23,7 @@ import {
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import MatrixDispatchConsole from '../components/ai/MatrixDispatchConsole';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -216,6 +217,30 @@ export default function AuruTrinity() {
               99.9% UPTIME // FIRESTORE CLOUD // ENCRYPTED
             </div>
           </motion.div>
+        </section>
+
+        {/* Live Auru Matrix AI Dispatch & Multi-Pillar Brain */}
+        <section className="mb-24">
+          <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-amber-500 text-black px-3 py-1 font-mono text-xs font-bold uppercase tracking-widest mb-2 border border-black">
+                <Bot className="w-3.5 h-3.5" /> CENTRÁLNY AI MOZOG // GEMINI 3.7 FLASH
+              </div>
+              <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
+                U.S.C. Matrix <span className="text-amber-500">AI Operačná Konzola</span>
+              </h2>
+              <p className="text-zinc-400 text-xs md:text-sm font-bold uppercase tracking-wider mt-1 max-w-2xl">
+                Inteligentný dispečing spájajúci logistiku, nábor remeselníkov, streetwear kalkulácie a zmluvné overovania.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-zinc-500 text-xs font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span className="text-emerald-400 font-bold uppercase">6/6 Pilierov Synchronizovaných</span>
+            </div>
+          </div>
+
+          <MatrixDispatchConsole initialPillar="AURU_TRINITY" />
         </section>
 
         {/* Interactive AI Automation Diagnostic Generator */}

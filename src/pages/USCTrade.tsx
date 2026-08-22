@@ -7,8 +7,10 @@ import React, { useState } from 'react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import SecretEnclaveTerminal from '../components/trade/SecretEnclaveTerminal';
+import SecureTradeRoom from '../components/trade/SecureTradeRoom';
 
 export default function USCTrade() {
+  const [activeSecureTab, setActiveSecureTab] = useState<'trade_room' | 'enclave'>('trade_room');
   const [formData, setFormData] = useState({
     name: '',
     contact: '',
@@ -122,29 +124,56 @@ export default function USCTrade() {
           </motion.div>
         </section>
 
-        {/* SECRET ENCLAVE PROTOCOL TERMINAL */}
+        {/* SECRET ENCLAVE & SECURE TRADE ROOM */}
         <section id="secret-enclave" className="mb-28 scroll-mt-24">
-          <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2 bg-red-950 border border-red-600 text-red-400 px-3 py-1 text-xs font-mono font-bold uppercase tracking-widest mb-3">
                 <Radio className="w-3.5 h-3.5 animate-pulse text-red-500" />
-                NEVEREJNÁ KOMUNIKAČNÁ PLATFORMA
+                NEVEREJNÁ KOMUNIKAČNÁ PLATFORMA & KRYPTOGRAFICKÁ KOMORA
               </div>
               <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
-                Secret Enclave // 369 Cipher
+                Secure Trade Room // Zakasajee
               </h2>
               <p className="text-zinc-400 text-sm max-w-xl font-bold uppercase tracking-wide mt-2">
-                Špeciálna platforma pre neverejné požiadavky a tajné zákazky. Každú hodinu generovaný nový šifrovací kľúč (AES-256-GCM). Komunikácia prebieha výlučne medzi tebou a velením U.S.C.
+                End-to-End šifrovaná obchodná miestnosť s prísnym Access Control Listom (ACL), hodinovou rotáciou kľúčov a správou dôverných nákladových manifestov.
               </p>
             </div>
 
-            <div className="text-zinc-500 text-xs font-mono border-l-2 border-red-700 pl-3">
-              AUTO-ROTATION: 1 HOUR<br />
-              ZERO LOG RETENTION (LOCAL)
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveSecureTab('trade_room')}
+                className={`px-4 py-2 text-xs font-black uppercase tracking-wider border-2 transition-all flex items-center gap-2 ${
+                  activeSecureTab === 'trade_room'
+                    ? 'bg-red-600 text-white border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.4)]'
+                    : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5" />
+                1. Secure Trade Room (ACL & E2EE)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveSecureTab('enclave')}
+                className={`px-4 py-2 text-xs font-black uppercase tracking-wider border-2 transition-all flex items-center gap-2 ${
+                  activeSecureTab === 'enclave'
+                    ? 'bg-amber-500 text-black border-amber-400'
+                    : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                }`}
+              >
+                <Radio className="w-3.5 h-3.5" />
+                2. Secret Enclave 369 Terminal
+              </button>
             </div>
           </div>
 
-          <SecretEnclaveTerminal />
+          {activeSecureTab === 'trade_room' ? (
+            <SecureTradeRoom />
+          ) : (
+            <SecretEnclaveTerminal />
+          )}
         </section>
 
         {/* Standard Deal Form */}

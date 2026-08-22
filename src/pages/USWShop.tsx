@@ -10,12 +10,18 @@ import {
   Flame, 
   Sparkles, 
   CheckCircle2,
-  Lock
+  Lock,
+  CreditCard,
+  QrCode,
+  Download,
+  Receipt
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { uswProducts } from '../data';
+import { generateOrderReceiptPdf } from '../lib/documentGenerator';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -28,6 +34,7 @@ export default function USWShop() {
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [selectedSize, setSelectedSize] = useState('L');
   const [quantity, setQuantity] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'crypto' | 'cod'>('card');
   const [orderForm, setOrderForm] = useState({
     customerName: '',
     phone: '',
@@ -38,6 +45,7 @@ export default function USWShop() {
   });
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderComplete, setOrderComplete] = useState<string | null>(null);
+  const [lastCompletedOrder, setLastCompletedOrder] = useState<any | null>(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -83,23 +91,50 @@ export default function USWShop() {
     try {
       const priceNum = parseFloat(selectedProduct.price.replace('€', '').trim()) || 0;
       const totalAmount = priceNum * quantity;
-      const orderRef = await addDoc(collection(db, 'orders'), {
+      const paymentMethodNames: Record<string, string> = {
+        card: 'Platba Kartou / Apple Pay (Okamžitá)',
+        crypto: 'Kryptomena (USDT / BTC)',
+        cod: 'Dobierka (Hotovosť / Kuriér)'
+      };
+
+      const orderPayload = {
         productId: selectedProduct.id,
         productName: selectedProduct.name,
         productPrice: selectedProduct.price,
         size: selectedSize,
         quantity,
         totalAmount: `€${totalAmount}`,
+        paymentMethod,
+        paymentMethodName: paymentMethodNames[paymentMethod],
         customerName: orderForm.customerName,
         phone: orderForm.phone,
         email: orderForm.email || '',
         address: `${orderForm.address}, ${orderForm.city}`,
         note: orderForm.note || '',
-        status: 'pending',
+        status: paymentMethod === 'card' ? 'paid_online' : 'pending',
         createdAt: serverTimestamp()
-      });
+      };
 
+      const orderRef = await addDoc(collection(db, 'orders'), orderPayload);
+
+      setLastCompletedOrder({
+        id: orderRef.id,
+        ...orderPayload,
+        product: selectedProduct
+      });
       setOrderComplete(orderRef.id);
+
+      // Trigger confetti celebration
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } catch (e) {
+        // Safe ignore
+      }
+
       setOrderForm({
         customerName: '',
         phone: '',
@@ -113,6 +148,27 @@ export default function USWShop() {
     } finally {
       setIsSubmittingOrder(false);
     }
+  };
+
+  const handleDownloadReceipt = () => {
+    if (!lastCompletedOrder) return;
+    generateOrderReceiptPdf({
+      orderId: lastCompletedOrder.id,
+      customerName: lastCompletedOrder.customerName,
+      phone: lastCompletedOrder.phone,
+      email: lastCompletedOrder.email,
+      address: lastCompletedOrder.address,
+      items: [
+        {
+          name: lastCompletedOrder.productName,
+          size: lastCompletedOrder.size,
+          quantity: lastCompletedOrder.quantity,
+          price: lastCompletedOrder.totalAmount
+        }
+      ],
+      totalAmount: lastCompletedOrder.totalAmount,
+      paymentStatus: lastCompletedOrder.paymentMethodName || 'Záväzná objednávka'
+    });
   };
 
   return (
@@ -280,14 +336,23 @@ export default function USWShop() {
                     KÓD OBJEDNÁVKY: <strong className="text-red-400">{orderComplete.slice(0, 8).toUpperCase()}</strong>
                   </p>
                   <p className="text-zinc-400 text-xs max-w-md leading-relaxed mb-6">
-                    Tvoju objednávku sme prijali. Náš tím ťa bude pred odoslaním kontaktovať (SMS / WhatsApp) s informáciou o doručení a platbe.
+                    Tvoju objednávku sme bezpečne uložili. Doklad o nákupe si môžeš ihneď stiahnuť vo formáte PDF.
                   </p>
-                  <button
-                    onClick={() => setSelectedProduct(null)}
-                    className="px-8 py-3 bg-red-600 text-white font-black uppercase tracking-widest text-xs border-2 border-black hover:bg-red-700"
-                  >
-                    Zavrieť a Pokračovať v Nákupe
-                  </button>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+                    <button
+                      onClick={handleDownloadReceipt}
+                      className="flex-1 py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs border-2 border-black flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_rgba(255,255,255,1)] transition-all"
+                    >
+                      <Download className="w-4 h-4" /> Stiahnuť PDF Doklad
+                    </button>
+                    <button
+                      onClick={() => setSelectedProduct(null)}
+                      className="flex-1 py-3.5 bg-zinc-900 text-white font-black uppercase tracking-widest text-xs border-2 border-zinc-700 hover:bg-zinc-800 transition-all"
+                    >
+                      Pokračovať v Nákupe
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col gap-6">
@@ -341,6 +406,62 @@ export default function USWShop() {
                         </div>
                       </div>
                     )}
+
+                    {/* Payment Method Selector */}
+                    <div>
+                      <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-2">
+                        Spôsob Platby
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('card')}
+                          className={`p-2.5 border-2 text-left flex items-center gap-2 transition-all ${
+                            paymentMethod === 'card'
+                              ? 'bg-red-600 border-black text-white'
+                              : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                          }`}
+                        >
+                          <CreditCard className="w-4 h-4 text-amber-400" />
+                          <div>
+                            <div className="text-[11px] font-black uppercase">Karta / Apple Pay</div>
+                            <div className="text-[9px] opacity-70">Okamžitá platba</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('crypto')}
+                          className={`p-2.5 border-2 text-left flex items-center gap-2 transition-all ${
+                            paymentMethod === 'crypto'
+                              ? 'bg-red-600 border-black text-white'
+                              : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                          }`}
+                        >
+                          <QrCode className="w-4 h-4 text-emerald-400" />
+                          <div>
+                            <div className="text-[11px] font-black uppercase">Krypto (USDT)</div>
+                            <div className="text-[9px] opacity-70">Decentralizované</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('cod')}
+                          className={`p-2.5 border-2 text-left flex items-center gap-2 transition-all ${
+                            paymentMethod === 'cod'
+                              ? 'bg-red-600 border-black text-white'
+                              : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                          }`}
+                        >
+                          <Truck className="w-4 h-4 text-blue-400" />
+                          <div>
+                            <div className="text-[11px] font-black uppercase">Dobierka</div>
+                            <div className="text-[9px] opacity-70">Platba pri prevzatí</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
 
                     {/* Customer Info Form */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -407,7 +528,7 @@ export default function USWShop() {
                     <button
                       type="submit"
                       disabled={isSubmittingOrder}
-                      className="w-full mt-2 py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2 border-2 border-black disabled:opacity-50"
+                      className="w-full mt-2 py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2 border-2 border-black disabled:opacity-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
                     >
                       <Truck className="w-4 h-4" />
                       {isSubmittingOrder ? 'Zapisujem objednávku...' : `Záväzne Objednať (${selectedProduct.price})`}

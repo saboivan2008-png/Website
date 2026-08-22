@@ -15,10 +15,16 @@ import {
   Phone,
   Fuel,
   Settings2,
-  Navigation
+  Navigation,
+  Download,
+  CreditCard,
+  QrCode,
+  DollarSign
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, query, addDoc, serverTimestamp } from 'firebase/firestore';
+import { generateOrderReceiptPdf } from '../lib/documentGenerator';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -105,9 +111,11 @@ export default function USCRent() {
 
   // Vehicle Reservation Modal
   const [selectedVehicle, setSelectedVehicle] = useState<any | null>(null);
+  const [depositPaymentMethod, setDepositPaymentMethod] = useState<'card' | 'crypto' | 'cash'>('card');
   const [reservationForm, setReservationForm] = useState({
     name: '',
     phone: '',
+    email: '',
     startDate: '',
     durationDays: '7',
     purpose: 'bolt_wolt',
@@ -115,6 +123,7 @@ export default function USCRent() {
   });
   const [isSubmittingRes, setIsSubmittingRes] = useState(false);
   const [resSuccessId, setResSuccessId] = useState<string | null>(null);
+  const [lastBookingData, setLastBookingData] = useState<any | null>(null);
 
   // On-Demand Courier Form
   const [courierForm, setCourierForm] = useState({
@@ -155,19 +164,42 @@ export default function USCRent() {
 
     setIsSubmittingRes(true);
     try {
-      const resDoc = await addDoc(collection(db, 'rental_bookings'), {
+      const depositAmount = '100 € (Vratná kaucia)';
+      const bookingPayload = {
         vehicleId: selectedVehicle.id,
         vehicleName: selectedVehicle.name,
         priceWeek: selectedVehicle.priceWeek || selectedVehicle.priceDay,
+        depositPaymentMethod,
+        depositAmount,
         ...reservationForm,
-        status: 'pending',
+        status: depositPaymentMethod === 'card' ? 'deposit_secured' : 'pending',
         createdAt: serverTimestamp()
-      });
+      };
 
+      const resDoc = await addDoc(collection(db, 'rental_bookings'), bookingPayload);
+
+      setLastBookingData({
+        id: resDoc.id,
+        ...bookingPayload,
+        vehicle: selectedVehicle
+      });
       setResSuccessId(resDoc.id);
+
+      // Confetti
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } catch (e) {
+        // Safe ignore
+      }
+
       setReservationForm({
         name: '',
         phone: '',
+        email: '',
         startDate: '',
         durationDays: '7',
         purpose: 'bolt_wolt',
@@ -178,6 +210,33 @@ export default function USCRent() {
     } finally {
       setIsSubmittingRes(false);
     }
+  };
+
+  const handleDownloadRentalVoucher = () => {
+    if (!lastBookingData) return;
+    generateOrderReceiptPdf({
+      orderId: lastBookingData.id,
+      customerName: lastBookingData.name,
+      phone: lastBookingData.phone,
+      email: lastBookingData.email,
+      address: `Odber: Garáž U.S.C. Bratislava / Nástup: ${lastBookingData.startDate}`,
+      items: [
+        {
+          name: `Nájom: ${lastBookingData.vehicleName} (${lastBookingData.durationDays} dní)`,
+          size: lastBookingData.purpose,
+          quantity: 1,
+          price: lastBookingData.priceWeek
+        },
+        {
+          name: `Rezervačná kaucia (${lastBookingData.depositPaymentMethod.toUpperCase()})`,
+          size: 'KAUCIÁRNIK',
+          quantity: 1,
+          price: '100 €'
+        }
+      ],
+      totalAmount: `${lastBookingData.priceWeek} + 100€ Kaucia`,
+      paymentStatus: 'REZERVÁCIA ZABEZPEČENÁ'
+    });
   };
 
   const handleCourierSubmit = async (e: React.FormEvent) => {
@@ -507,32 +566,41 @@ export default function USCRent() {
 
               {resSuccessId ? (
                 <div className="py-8 text-center flex flex-col items-center">
-                  <CheckCircle2 className="w-16 h-16 text-white mb-4" />
+                  <CheckCircle2 className="w-16 h-16 text-emerald-400 mb-4" />
                   <h3 className="text-3xl font-black uppercase text-white mb-2">
                     Rezervácia Prijatá!
                   </h3>
                   <p className="text-zinc-400 text-xs font-mono mb-4">
-                    RESERVATION CODE: <strong className="text-white">{resSuccessId.slice(0, 8).toUpperCase()}</strong>
+                    RESERVATION CODE: <strong className="text-amber-400">{resSuccessId.slice(0, 8).toUpperCase()}</strong>
                   </p>
-                  <p className="text-zinc-300 text-sm max-w-md leading-relaxed mb-6">
-                    Vozidlo <strong className="text-white">{selectedVehicle.name}</strong> bolo zarezervované. Dispečer ťa bude kontaktovať do 30 minút ohľadom podpisu zmluvy a odovzdania kľúčov.
+                  <p className="text-zinc-300 text-xs max-w-md leading-relaxed mb-6">
+                    Vozidlo <strong className="text-white">{selectedVehicle.name}</strong> je predbežne zarezervované v dispečingu. Môžeš si ihneď stiahnuť oficiálny rezervačný voucher / potvrdenie.
                   </p>
-                  <button
-                    onClick={() => setSelectedVehicle(null)}
-                    className="px-8 py-3 bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-zinc-200"
-                  >
-                    Späť do Garáže
-                  </button>
+
+                  <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+                    <button
+                      onClick={handleDownloadRentalVoucher}
+                      className="flex-1 py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs border-2 border-black flex items-center justify-center gap-2 shadow-[3px_3px_0px_0px_rgba(255,255,255,1)] transition-all"
+                    >
+                      <Download className="w-4 h-4" /> Stiahnuť Voucher (PDF)
+                    </button>
+                    <button
+                      onClick={() => setSelectedVehicle(null)}
+                      className="flex-1 py-3.5 bg-zinc-900 text-white font-black uppercase tracking-widest text-xs border-2 border-zinc-700 hover:bg-zinc-800 transition-all"
+                    >
+                      Späť do Garáže
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col gap-6">
                   <div>
-                    <span className="text-zinc-500 font-mono text-xs uppercase font-bold">REZERVÁCIA VOZIDLA</span>
+                    <span className="text-zinc-500 font-mono text-xs uppercase font-bold">REZERVÁCIA VOZIDLA // FLOTILA</span>
                     <h2 className="text-2xl font-black uppercase text-white tracking-tight">
                       {selectedVehicle.name}
                     </h2>
                     <div className="text-sm font-mono text-zinc-300 mt-1">
-                      Sadzba: <strong className="text-white">{selectedVehicle.priceWeek || selectedVehicle.priceDay}</strong>
+                      Sadzba: <strong className="text-white">{selectedVehicle.priceWeek || selectedVehicle.priceDay}</strong> | Kaucia: <strong className="text-amber-400">100 €</strong>
                     </div>
                   </div>
 
@@ -589,6 +657,62 @@ export default function USCRent() {
                       </div>
                     </div>
 
+                    {/* Deposit payment method */}
+                    <div>
+                      <label className="block text-zinc-400 text-xs font-bold uppercase tracking-widest mb-1.5">
+                        Zabezpečenie Kaucie (100 €)
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setDepositPaymentMethod('card')}
+                          className={`p-2 border-2 text-left flex items-center gap-2 transition-all ${
+                            depositPaymentMethod === 'card'
+                              ? 'bg-white border-white text-black font-black'
+                              : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                          }`}
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          <div>
+                            <div className="text-[11px] uppercase">Karta / Záloha</div>
+                            <div className="text-[9px] opacity-70">Okamžité blokovanie</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setDepositPaymentMethod('crypto')}
+                          className={`p-2 border-2 text-left flex items-center gap-2 transition-all ${
+                            depositPaymentMethod === 'crypto'
+                              ? 'bg-white border-white text-black font-black'
+                              : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                          }`}
+                        >
+                          <QrCode className="w-4 h-4" />
+                          <div>
+                            <div className="text-[11px] uppercase">Krypto (USDT)</div>
+                            <div className="text-[9px] opacity-70">Escrow peňaženka</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setDepositPaymentMethod('cash')}
+                          className={`p-2 border-2 text-left flex items-center gap-2 transition-all ${
+                            depositPaymentMethod === 'cash'
+                              ? 'bg-white border-white text-black font-black'
+                              : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                          }`}
+                        >
+                          <DollarSign className="w-4 h-4" />
+                          <div>
+                            <div className="text-[11px] uppercase">V Hotovosti</div>
+                            <div className="text-[9px] opacity-70">Pri prevzatí kľúčov</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-zinc-400 text-xs font-bold uppercase mb-1">Účel Nájmu</label>
                       <select
@@ -616,7 +740,7 @@ export default function USCRent() {
                     <button
                       type="submit"
                       disabled={isSubmittingRes}
-                      className="w-full mt-2 py-4 bg-white hover:bg-zinc-200 text-black font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 border-2 border-black disabled:opacity-50"
+                      className="w-full mt-2 py-4 bg-white hover:bg-zinc-200 text-black font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 border-2 border-black disabled:opacity-50 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]"
                     >
                       <Calendar className="w-4 h-4" />
                       {isSubmittingRes ? 'Overujem a odosielam...' : 'Potvrdiť Záväznú Rezerváciu'}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Printer, ShieldCheck, Download, Copy, Check } from 'lucide-react';
+import { generateContractPdf } from '../../lib/documentGenerator';
 
 export default function AdminLegalContracts() {
   const [selectedContract, setSelectedContract] = useState<'gdpr' | 'agency_contract' | 'subcontractor'>('gdpr');
@@ -100,6 +101,25 @@ Podpis: .......................................`;
     window.print();
   };
 
+  const handleDownloadPdf = () => {
+    const titleMap = {
+      gdpr: 'Súhlas so spracovaním osobných údajov (GDPR)',
+      agency_contract: 'Rámcová zmluva o sprostredkovaní práce (SZČO Turnus)',
+      subcontractor: 'Dohoda o spolupráci - Garáž Flotily a Kuriér'
+    };
+
+    generateContractPdf({
+      title: titleMap[selectedContract],
+      contractType: selectedContract,
+      workerName,
+      workerId,
+      workerCity,
+      hourlyRate,
+      destinationCountry,
+      content: getCurrentText()
+    });
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -195,19 +215,25 @@ Podpis: .......................................`;
           </button>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={handleCopy}
             className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border-2 border-zinc-700 text-white font-mono text-xs uppercase flex items-center gap-2 transition-all"
           >
             {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-            {copied ? 'Skopírované!' : 'Kopírovať Text'}
+            {copied ? 'Skopírované!' : 'Kopírovať'}
+          </button>
+          <button
+            onClick={handleDownloadPdf}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase flex items-center gap-2 border-2 border-black transition-all shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]"
+          >
+            <Download className="w-4 h-4" /> Stiahnuť PDF Zmluvu
           </button>
           <button
             onClick={handlePrint}
             className="px-4 py-2 bg-white hover:bg-zinc-200 text-black font-black text-xs uppercase flex items-center gap-2 border-2 border-black transition-all"
           >
-            <Printer className="w-4 h-4" /> Tlačiť / PDF
+            <Printer className="w-4 h-4" /> Tlačiť
           </button>
         </div>
       </div>

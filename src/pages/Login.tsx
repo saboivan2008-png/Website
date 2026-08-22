@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../lib/firebase';
-import { ShieldAlert, LogIn, Key, Mail } from 'lucide-react';
+import { ShieldAlert, LogIn, Key, Mail, UserPlus } from 'lucide-react';
 
 export default function Login() {
   const [error, setError] = useState('');
@@ -11,6 +11,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isResetMode, setIsResetMode] = useState(false);
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const navigate = useNavigate();
 
   const handleGoogleSignIn = async () => {
@@ -20,7 +21,7 @@ export default function Login() {
       navigate('/admin');
     } catch (err: any) {
       console.error(err);
-      setError('Prístup zamietnutý. Systémová chyba.');
+      setError('Prístup zamietnutý. Systémová chyba pri Google prihlásení.');
     }
   };
 
@@ -35,7 +36,7 @@ export default function Login() {
         return;
       }
       try {
-        await sendPasswordResetEmail(auth, email);
+        await sendPasswordResetEmail(auth, email.trim());
         setMessage('Odkaz na reset hesla bol odoslaný na tvoj email.');
         setIsResetMode(false);
       } catch (err: any) {
@@ -49,13 +50,29 @@ export default function Login() {
       setError('Zadaj email a heslo.');
       return;
     }
+
+    if (password.length < 6) {
+      setError('Heslo musí mať aspoň 6 znakov.');
+      return;
+    }
     
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate('/admin');
+      if (isRegisterMode) {
+        await createUserWithEmailAndPassword(auth, email.trim(), password);
+        navigate('/admin');
+      } else {
+        await signInWithEmailAndPassword(auth, email.trim(), password);
+        navigate('/admin');
+      }
     } catch (err: any) {
       console.error(err);
-      setError('Nesprávne meno alebo heslo.');
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError('Nesprávne heslo alebo účet neexistuje. Ak sa prihlasujete prvýkrát, kliknite na "Vytvoriť / Nastaviť heslo".');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('Tento účet už existuje. Prihláste sa zadaným heslom alebo použite reset hesla.');
+      } else {
+        setError('Chyba overenia: ' + (err.message || 'Skontrolujte údaje'));
+      }
     }
   };
 
@@ -119,17 +136,35 @@ export default function Login() {
             type="submit"
             className="w-full py-4 bg-red-600 text-white font-black uppercase tracking-widest border-4 border-black hover:bg-red-500 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none flex items-center justify-center gap-3 mt-2"
           >
-            {isResetMode ? 'Odoslať Reset Hesla' : 'Prihlásiť (Heslo)'}
+            {isResetMode ? 'Odoslať Reset Hesla' : isRegisterMode ? 'Vytvoriť Účet & Vstúpiť' : 'Prihlásiť (Heslo)'}
           </button>
         </form>
 
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-wrap justify-between items-center gap-2 mb-6 text-xs font-bold uppercase tracking-widest">
           <button 
             type="button" 
-            onClick={() => setIsResetMode(!isResetMode)}
-            className="text-zinc-500 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors"
+            onClick={() => {
+              setIsRegisterMode(!isRegisterMode);
+              setIsResetMode(false);
+              setError('');
+              setMessage('');
+            }}
+            className="text-amber-400 hover:text-amber-300 transition-colors"
           >
-            {isResetMode ? 'Späť na prihlásenie' : 'Zabudnuté heslo?'}
+            {isRegisterMode ? 'Mám už heslo -> Prihlásiť' : '+ Nastaviť / Vytvoriť nové heslo'}
+          </button>
+
+          <button 
+            type="button" 
+            onClick={() => {
+              setIsResetMode(!isResetMode);
+              setIsRegisterMode(false);
+              setError('');
+              setMessage('');
+            }}
+            className="text-zinc-500 hover:text-white transition-colors"
+          >
+            {isResetMode ? 'Späť' : 'Zabudnuté heslo?'}
           </button>
         </div>
 
