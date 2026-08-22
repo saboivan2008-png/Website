@@ -20,6 +20,10 @@ export default function Login() {
       await signInWithPopup(auth, provider);
       navigate('/admin');
     } catch (err: any) {
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        // User voluntarily closed popup, do not treat as critical system error
+        return;
+      }
       console.error(err);
       setError('Prístup zamietnutý. Systémová chyba pri Google prihlásení.');
     }

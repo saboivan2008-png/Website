@@ -13,10 +13,11 @@ import AdminSecretDeals from '../components/admin/AdminSecretDeals';
 import AdminAuruLeads from '../components/admin/AdminAuruLeads';
 import AdminTeamManagement from '../components/admin/AdminTeamManagement';
 import AdminLegalContracts from '../components/admin/AdminLegalContracts';
+import AdminGmailIntegration from '../components/admin/AdminGmailIntegration';
 import MatrixDispatchConsole from '../components/ai/MatrixDispatchConsole';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'earlyAccess' | 'aiDispatch' | 'shop' | 'rent' | 'work' | 'tasks' | 'trade' | 'leads' | 'team' | 'contracts' | 'settings'>('aiDispatch');
+  const [activeTab, setActiveTab] = useState<'earlyAccess' | 'aiDispatch' | 'gmail' | 'shop' | 'rent' | 'work' | 'tasks' | 'trade' | 'leads' | 'team' | 'contracts' | 'settings'>('aiDispatch');
   const [leads, setLeads] = useState<any[]>([]);
   const [newPassword, setNewPassword] = useState('');
   const [passwordStatus, setPasswordStatus] = useState('');
@@ -83,6 +84,13 @@ export default function AdminDashboard() {
             className={`flex items-center gap-3 w-full text-left p-3 font-black uppercase tracking-widest border-2 transition-all ${activeTab === 'aiDispatch' ? 'bg-amber-500 border-black text-black shadow-[3px_3px_0px_0px_rgba(255,255,255,1)]' : 'border-transparent text-amber-400 hover:text-white hover:border-amber-500'}`}
           >
             <Bot className="w-5 h-5 animate-pulse" /> 🧠 AI Matrix Dispečing
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('gmail')}
+            className={`flex items-center gap-3 w-full text-left p-3 font-black uppercase tracking-widest border-2 transition-all ${activeTab === 'gmail' ? 'bg-red-600 border-black text-white shadow-[3px_3px_0px_0px_rgba(255,255,255,1)]' : 'border-transparent text-red-400 hover:text-white hover:border-red-500'}`}
+          >
+            <Mail className="w-5 h-5" /> ✉️ Gmail Komunikácia
           </button>
 
           <button 
@@ -189,6 +197,10 @@ export default function AdminDashboard() {
 
             <MatrixDispatchConsole initialPillar="ALL_PILLARS" />
           </div>
+        )}
+
+        {activeTab === 'gmail' && (
+          <AdminGmailIntegration />
         )}
 
         {activeTab === 'earlyAccess' && (
