@@ -42,7 +42,7 @@ if (accountId && accessKeyId && secretAccessKey) {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 8080;
 
   // JSON Body Parser for API requests
   app.use(express.json());
